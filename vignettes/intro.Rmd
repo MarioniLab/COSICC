@@ -1,0 +1,360 @@
+---
+title: "Introduction to COSICC"
+author: "Magdalena Strauss"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+bibliography: references.bib
+vignette: >
+  %\VignetteIndexEntry{Introduction to COSICC}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Welcome to COSICC! COSICC R an R package for **CO**mparative analysis of **S**ingle-**C**ell-RNA-seq data for **C**omplex cell populations. This vignette gives an introduction and overview to COSICC. 
+
+# Overview and use cases
+
+
+For exact reproducibility, we set a fixed seed.
+
+```{r}
+set.seed(112244)
+library(COSICC)
+suppressMessages(library(scran))
+suppressMessages(library(scater))
+suppressMessages(library(splatter))
+suppressMessages(library(dplyr))
+suppressMessages(library(destiny))
+suppressMessages(library(methods))
+suppressMessages(library(MASS))
+suppressMessages(library(mpath))
+```
+
+# COSICC_DA_cell_type 
+
+COSICC_DA_cell_type tests for differential abundance after perturbations, compared to a control experiment without perturbations. This type of set-up occurs for many experiments. One example is patient data. Assume we have an scRNA-seq data set of a cancer patient at the day of diagnosis, and another one from after treatment. Both samples contain normal and malignant cells, and different cell types. 
+
+## Simulating data
+
+### Simulating the control experiment
+
+The control experiment is an experiment without the perturbation studied. For instance, it could be a sample from a cancer patient at the day of diagnosis if the perturbation we want to look at is the treatment following the diagnosis. Or it could be a control chimera experiment as in @strauss, where unperturbed stem cells were injected into a mouse embryo at an early developmental stage, which served as a control experiment for injected cells with a gene knockout.  
+
+We simulate data using the Splatter Bioconductor package (@splatter). We simulate 10 cell types with an average of 500 cells each, and visualise the data on a UMAP. 
+
+
+```{r,fig.width=7}
+sce_sim_cell_type_control <- splatSimulate(
+    nGenes = 10,
+    batchCells = 5000,
+    group.prob = rep(0.1,10),
+    method = "groups",
+    verbose = FALSE
+)
+
+sce_sim_cell_type_control <- logNormCounts(sce_sim_cell_type_control)
+sce_sim_cell_type_control <- runPCA(sce_sim_cell_type_control,ncomponents=3)
+sce_sim_cell_type_control <- runUMAP(sce_sim_cell_type_control)
+names(colData(sce_sim_cell_type_control))[3] <- "cell_type"
+
+plotReducedDim(sce_sim_cell_type_control, dimred="UMAP",colour_by = "cell_type") + 
+    theme_classic()
+```
+
+For each of the cell types, we label 50% of the cells as normal and 50% as marked. In practice, this may be a mock perturbation (e.g. injected cells for chimeras marked with fluorescent markers), malignant cells in a cancer at time of diganosis etc. 
+
+```{r}
+sce_sim_cell_type_control$marked <- FALSE
+for (j in 1:10){
+    xx <- which(sce_sim_cell_type_control$cell_type == paste0("Group",j))
+    sce_sim_cell_type_control$marked[sample(xx,floor(length(xx) * 0.5+
+                                    (runif(1)<0.5)))]  <- TRUE
+}
+```
+
+We plot the distribution of cell types. 
+
+```{r,fig.width=7}
+table_cell_types <- 
+    as.data.frame(colData(sce_sim_cell_type_control)[,c("cell_type","marked")]) %>% 
+    dplyr::group_by_all() %>% dplyr::count()
+
+ggplot(table_cell_types,aes(x=cell_type,y=n,fill=marked)) + 
+    geom_bar(stat="identity",position="dodge")+theme_classic()+
+    xlab("cell type") + ylab("number of cells") + 
+    ggtitle("Control experiment: Distribution of cells across cell types")+
+    scale_fill_manual(values=c("FALSE"="darkblue","TRUE"="red"))
+```
+
+### Simulating the experiment with perturbation
+
+For the experiment with perturbation, we first perform the same simulation as above. Note that while the parameters are identical, this is a separate independent simulation. 
+
+```{r,fig.width=7}
+sce_sim_cell_type_case <- splatSimulate(
+    nGenes = 10,
+    batchCells = 5000,
+    group.prob = rep(0.1,10),
+    method = "groups",
+    verbose = FALSE
+)
+
+sce_sim_cell_type_case <- logNormCounts(sce_sim_cell_type_case)
+sce_sim_cell_type_case <- runPCA(sce_sim_cell_type_case,ncomponents=3)
+sce_sim_cell_type_case <- runUMAP(sce_sim_cell_type_case)
+names(colData(sce_sim_cell_type_case))[3] <- "cell_type"
+
+plotReducedDim(sce_sim_cell_type_case, dimred="UMAP",colour_by = "cell_type") + 
+    theme_classic()
+
+sce_sim_cell_type_case$marked <- FALSE
+for (j in 1:10){
+    xx <- which(sce_sim_cell_type_case$cell_type == paste0("Group",j))
+    sce_sim_cell_type_case$marked[sample(xx,floor(length(xx) * 0.5 + 
+                                            (runif(1) <= 0.5)))]  <- TRUE
+}
+```
+
+Now we assume that Group1 and Group2 and Group3 have been affected by a perturbation and therefore the marked cells have been depleted to 50%, 20% and 5% of their original number of cells, respectively. 
+
+```{r}
+marked_cells_group1 <- which(sce_sim_cell_type_case$marked & 
+                                 sce_sim_cell_type_case$cell_type=="Group1")
+marked_cells_group2 <- which(sce_sim_cell_type_case$marked & 
+                                 sce_sim_cell_type_case$cell_type=="Group2")
+marked_cells_group3 <- which(sce_sim_cell_type_case$marked & 
+                                 sce_sim_cell_type_case$cell_type=="Group3")
+depleted_cells <- c(sample(marked_cells_group1,floor(0.5*length(marked_cells_group1) + 
+                                                         (runif(1)<0.5))),
+                    sample(marked_cells_group2,floor(0.8*length(marked_cells_group2) + 
+                                                         (runif(1)<0.5))),
+                    sample(marked_cells_group3,floor(0.95*length(marked_cells_group3) + 
+                                                         (runif(1)<0.5))))
+sce_sim_cell_type_case <- sce_sim_cell_type_case[,-depleted_cells]
+```
+
+We now plot the distribution of cells across cell types. 
+
+```{r,fig.width=7}
+table_cell_types <- 
+    as.data.frame(colData(sce_sim_cell_type_case)[,c("cell_type","marked")]) %>% 
+    dplyr::group_by_all() %>% dplyr::count()
+
+ggplot(table_cell_types,aes(x=cell_type,y=n,fill=marked)) + 
+    geom_bar(stat="identity",position="dodge")+theme_classic()+
+    xlab("cell type") + ylab("number of cells") + 
+    ggtitle("Case experiment: Distribution of cells across cell types")+
+    scale_fill_manual(values=c("FALSE"="darkblue","TRUE"="red"))
+```
+For experiments with visually marked cells, e.g. using fluorescent markers as in @pijuan-sala, @guibentif, or @strauss, the following sampling bias occurs: experimentalists aim for approximately 50% (or a different fixed proportion) of cells with the fluorescent markers, which means that the non-depleted cell types will appear enriched in marked cells. 
+
+We simulate the experimental bias described above by sampling an equal number of marked and unmarked cells. 
+
+```{r}
+marked_cells <- which(sce_sim_cell_type_case$marked)
+unmarked_cells <- which(!(sce_sim_cell_type_case$marked))
+sce_sim_cell_type_case_sampled <- 
+    sce_sim_cell_type_case[,c(sample(marked_cells,length(marked_cells)),
+                sample(unmarked_cells,length(marked_cells)))]
+```
+
+We plot the resulting  distribution of cells across cell types. The unaffected cell types now appear to be enriched for marked cells. However, this is only because of the experimental bias. 
+
+```{r,fig.width=7}
+table_cell_types <- 
+    as.data.frame(colData(sce_sim_cell_type_case_sampled)[,c("cell_type","marked")]) %>% 
+    dplyr::group_by_all() %>% dplyr::count()
+
+ggplot(table_cell_types,aes(x=cell_type,y=n,fill=marked)) + 
+    geom_bar(stat="identity",position="dodge")+theme_classic()+
+    xlab("cell type") + ylab("number of cells") + 
+    ggtitle("Case experiment: Distribution of cells across cell types after experiment")+
+    scale_fill_manual(values=c("FALSE"="darkblue","TRUE"="red"))
+```
+
+Below we show that, by running COSICC_DA_cell_type, we are able to identify the different levels of depletion for the three cell type correctly, as COSICC_DA_cell_type is able to correct for the spurious enrichment for marked cells resulting from the experimental bias explained above. 
+
+```{r,fig.width=7}
+COSICC_DA_result <- 
+    COSICC_DA_cell_type(sce_case=sce_sim_cell_type_case_sampled,
+                        sce_control=sce_sim_cell_type_control)
+```
+
+## Note about method and applicability
+
+COSICC_DA_cell_type assumes that the true median depletion or enrichment of marked cells across all cell types is 0. In our example, at most 4 groups could be depleted for the method to identify the true enrichment and depletion. 
+
+# COSICC_kinetics
+
+COSICC_kinetics identifies whether, as a result of a perturbation,  there is significant delay or acceleration along a lineage trajectory. 
+
+# Simulating data
+
+Like for COSICC_DA_cell_type above, we first simulate control data using the Splatter package. 
+
+## Simulating the control experiment
+
+```{r}
+sce_kinetics_control <- 
+splatSimulatePaths(batchCells=500,verbose=FALSE,nGenes=10,de.prob=0.5)
+```
+
+Splatter simulates developmental progression as "Step", we rename as pt (pseudotime), to apply COSICC_kinetics. 
+
+```{r}
+sce_kinetics_control$pt <- sce_kinetics_control$Step
+sce_kinetics_control$Step <- NULL
+```
+
+We mark cells, with somewhat more cells marked from the earlier part of the lineage trajectory. This simulates an effect in the control experiment caused by experimental and not biological reasons.
+
+
+```{r}
+sce_kinetics_control$marked <- (1:ncol(sce_kinetics_control)) %in% sample(1:ncol(sce_kinetics_control),floor(0.5*ncol(sce_kinetics_control)))
+cells_higher_pt_marked <- colnames(sce_kinetics_control[,sce_kinetics_control$marked & sce_kinetics_control$pt>median(sce_kinetics_control$pt)])
+cells_depleted_experimental <- sample(cells_higher_pt_marked,40)
+sce_kinetics_control <- sce_kinetics_control[,!(sce_kinetics_control$Cell %in% cells_depleted_experimental)]
+```
+
+We compute normalised log-counts and PCA. 
+
+```{r}
+sce_kinetics_control <- logNormCounts(sce_kinetics_control)
+sce_kinetics_control <- runPCA(sce_kinetics_control,ncomponents=3)
+```
+
+We create a plot of a diffusion map for the data set to illustrate pseudotime and progression along the lineage trajectory. 
+
+```{r,fig.width=7}
+dm <- DiffusionMap(reducedDims(sce_kinetics_control)$PCA)
+
+xx <- sample(1:length(dm$DC1))
+tmp <- data.frame(DC1 = eigenvectors(dm)[xx, 1],
+                  DC2 = eigenvectors(dm)[xx, 2],
+                  pt = sce_kinetics_control$pt[xx],
+                  marked = sce_kinetics_control$marked[xx])
+ggplot(tmp,mapping=aes(x=DC1,y=DC2,color=pt)) + geom_point() + theme_classic() + 
+    xlab("diffusion component 1") + ylab("diffusion component 2") + 
+    scale_colour_viridis_c()+
+    ggtitle("Diffusion map sce_kinetics_control")
+```
+
+
+Now we repeat the plot, but coloured by whether the cells are marked. 
+
+```{r,fig.width=7}
+ggplot(tmp,mapping=aes(x=DC1,y=DC2,color=marked)) + geom_point() + theme_classic() + 
+    xlab("diffusion component 1") + ylab("diffusion component 2") + 
+    scale_color_manual(values=c("FALSE"="darkblue","TRUE"="red"))+
+    ggtitle("Diffusion map sce_kinetics_control")
+```
+
+We also plot the distributions of marked an unmarked cells across pseudotime. The figure below shows that there is some difference between pseudotimes for marked and unmarked cells for the control data set. This illustrates a possible experimental effect. 
+
+```{r,fig.width=7}
+ggplot(colData(sce_kinetics_control),aes(fill=marked,x=pt)) + geom_density(alpha=0.3)+theme_classic() + scale_fill_manual(values=c("FALSE"="darkblue","TRUE"="red"))+
+    ggtitle("Distribution of cells across pseudotime for sce_kinetics_control")+
+    xlab("pseudotime")
+```
+
+## Simulating the experiment with perturbation
+
+To simulate a perturbation that delays progression along a lineage trajectory, we define probabilites for marking cells along the lineage trajectory that decrease with progression along the lineage trajectory. 
+
+```{r}
+probs <- sort(runif(ncol(sce_kinetics_control)),decreasing=TRUE)
+cells_higher_pt_marked <- colnames(sce_kinetics_control[,sce_kinetics_control$marked & sce_kinetics_control$pt>median(sce_kinetics_control$pt)])
+kinetics_depleted_biological <- sample(cells_higher_pt_marked,80)
+sce_kinetics_case <- sce_kinetics_control[,!(colnames(sce_kinetics_control)%in%kinetics_depleted_biological)]
+```
+
+We plot the perturbed data set on a UMAP. 
+
+```{r,fig.width=7}
+tmp <- data.frame(DC1 = eigenvectors(dm)[xx, 1],
+                  DC2 = eigenvectors(dm)[xx, 2],
+                  pt = sce_kinetics_case$pt[xx],
+                  marked = sce_kinetics_control$marked[xx])
+
+ggplot(tmp,mapping=aes(x=DC1,y=DC2,color=marked)) + geom_point() + 
+    theme_classic() + 
+    xlab("diffusion component 1") + ylab("diffusion component 2") + 
+    scale_color_manual(values=c("FALSE"="darkblue","TRUE"="red"))+
+    ggtitle("Diffusion map sce_kinetics_case")
+```
+We also plot the distributions of marked an unmarked cells across pseudotime. The figure below shows that a difference between pseudotimes for marked and unmarked cells for the perturbation data set, which is larger than the effect seen for the control data. This illustrates a biological effect. 
+
+```{r,fig.width=7}
+ggplot(colData(sce_kinetics_case),aes(fill=marked,x=pt)) + 
+    geom_density(alpha=0.3)+theme_classic() + 
+    scale_fill_manual(values=c("FALSE"="darkblue","TRUE"="red"))+
+    ggtitle("Distribution of cells across pseudotime for sce_kinetics_case")+
+    xlab("pseudotime")
+```
+
+## Identification of developmental delay with COSICC_kinetics
+
+We now run COSICC_kinetics to test whether the delay in development along the lineage trajectory seen in the figure above is significant. Indeed, COSICC_kinetics identifies a significant delay of marked versus unmarked cells for the perturbed case data. The fact that convidence_interval_overlapping_with_control = FALSE means that the 95% confidence intervals for the case and the control data do not overlap. Therefore, while the control data also shows a developmental delay, the one for the perturbed case data set may be seen as significantly more pronounced. COSICC_kinetics thereby allows the detection of significant developmental delay, while also comparing the this delay to the control data set in a principled manner. 
+
+
+```{r}
+COSICC_kinetics(sce_case=sce_kinetics_case,sce_control=sce_kinetics_control)
+```
+
+# COSICC_DE
+
+COSICC_DE tests for differential gene expression changes along the trajectory between marked and unmarked cells in the perturbation data set, relative to the differences between marked and unmarked cells in the control data set. 
+
+We simulate data with dynamic differential genes expression, i.e. differential expression that changes along the lineage trajectory. 
+
+```{r,fig.width=7,fig.height=3.5}
+sce_test_list_dynamic <- simulate_DE_dynamic(n=2,seeds=NULL,de.prob_case=0.6,de.prob_control=0.1,n_genes=4)
+```
+We run COSICC_DE to identify the differentially expressed genes. We assume that Genes1-4 had been found to be relevant for development along the lineage trajectory using an external reference data set. Therefore we include them in list_lineage_genes below.  The figures below illustrate the numbers of genes that are statically or dynamically differentially expressed (DE) for each of the lineage trajectories, as well as effect sizes and q-values (@BY). 
+
+```{r,fig.width=7,fig.height=3.5}
+list_lineage_genes=list(c("Gene1","Gene2","Gene3","Gene4"),c("Gene1","Gene2","Gene3","Gene4"))
+result_DE_dynamic <- COSICC_DE(list_sce_case=sce_test_list_dynamic$list_sce_case,
+        list_sce_control=sce_test_list_dynamic$list_sce_control,
+        list_lineage_genes=list_lineage_genes)
+result_DE_dynamic
+```
+
+## Running COSICC_DE separately and combine output across lineage trajectories
+
+This section shows how to run COSICC_DE_core separately for each lineage trajectory and then combine the outputs to select impacted lineage trajectories and adjust p-values. This approach can be useful when applying COSICC_DE to large data sets with many lineage trajectories using array jobs. The figures are identical to those shown above. 
+
+### Running COSICC_DE_core separately for each lineage trajectory:
+
+```{r}
+# result_list_dynamic <- c()
+# for (j in 1:length(sce_test_list_dynamic$list_sce_case)){
+#     result_list_dynamic[[j]] <- COSICC_DE_core(sce_case=sce_test_list_dynamic$list_sce_case[[j]],
+#         sce_control=sce_test_list_dynamic$list_sce_control[[j]],
+#         lineage_genes=list_lineage_genes[[j]])
+# }
+```
+
+### Combining the output:
+
+```{r,fig.width=7,fig.height=3.5}
+# result_list_dynamic
+# result_dynamic_combined <- combine_lineages_COSICC_DE(result_list_dynamic,names(sce_test_list_dynamic$list_sce_case))
+# result_dynamic_combined
+```
+
+
+```{r,eval=FALSE}
+# Saving the simulated data sets
+save(sce_sim_cell_type_case,sce_sim_cell_type_case, sce_kinetics_case,sce_kinetics_control,sce_DE_static_case,sce_DE_static_control,sce_DE_dynamic_case,sce_DE_dynamic_control,file="data/sim_data.rda")
+```
+
+
+
+# Session Information
+
+```{r}
+sessionInfo()
+```
+
+# References
