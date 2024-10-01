@@ -2,12 +2,8 @@
 title: "Introduction to COSICC"
 author: "Magdalena Strauss"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: pdf_document
 bibliography: references.bib
-vignette: >
-  %\VignetteIndexEntry{Introduction to COSICC}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 Welcome to COSICC! COSICC R an R package for **CO**mparative analysis of **S**ingle-**C**ell-RNA-seq data for **C**omplex cell populations. This vignette gives an introduction and overview to COSICC. 
