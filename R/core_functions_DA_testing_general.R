@@ -3,8 +3,8 @@
 #' @import ggplot2
 #' @importFrom ggrepel geom_text_repel
 #' @importFrom scales pseudo_log_trans
-#' @title COSICC_DA_cell_type
-#' @description COSICC_DA_cell_type performs differential abundance testing
+#' @title COSICC_DA_group
+#' @description COSICC_DA_group performs differential abundance testing
 #' for perturbation experiments relative to control experiments.
 #' @param sce_case SingleCellExperiment for the case data set,
 #' colData needs to include the slots 'marked' (TRUE/FALSE) for the presence
@@ -20,7 +20,7 @@
 #' @param thresh_marked_control minimum number of marked cells per cell type in the control data set
 #' @param thresh_unmarked_case minimum number of unmarked cells per cell type in the case data set
 #' @export
-COSICC_DA_cell_type <- function(sce_case,sce_control,alpha=0.1,thresh_marked_control=5,thresh_unmarked_case=5){
+COSICC_DA_group <- function(sce_case,sce_control,alpha=0.1,thresh_marked_control=5,thresh_unmarked_case=5){
   sce_case_marked <- sce_case[,sce_case$marked]
   sce_case_unmarked <- sce_case[,!(sce_case$marked)]
   sce_control_marked <- sce_control[,sce_control$marked]

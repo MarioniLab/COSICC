@@ -30,9 +30,9 @@ suppressMessages(library(MASS))
 suppressMessages(library(mpath))
 ```
 
-# COSICC_DA_cell_type 
+# COSICC_DA_group 
 
-COSICC_DA_cell_type tests for differential abundance after perturbations, compared to a control experiment without perturbations. This type of set-up occurs for many experiments. One example is patient data. Assume we have an scRNA-seq data set of a cancer patient at the day of diagnosis, and another one from after treatment. Both samples contain normal and malignant cells, and different cell types. 
+COSICC_DA_group tests for differential abundance after perturbations, compared to a control experiment without perturbations. This type of set-up occurs for many experiments. One example is patient data. Assume we have an scRNA-seq data set of a cancer patient at the day of diagnosis, and another one from after treatment. Both samples contain normal and malignant cells, and different cell types. 
 
 ## Simulating data
 
@@ -172,17 +172,17 @@ ggplot(table_cell_types,aes(x=cell_type,y=n,fill=marked)) +
     scale_fill_manual(values=c("FALSE"="darkblue","TRUE"="red"))
 ```
 
-Below we show that, by running COSICC_DA_cell_type, we are able to identify the different levels of depletion for the three cell type correctly, as COSICC_DA_cell_type is able to correct for the spurious enrichment for marked cells resulting from the experimental bias explained above. 
+Below we show that, by running COSICC_DA_group, we are able to identify the different levels of depletion for the three cell type correctly, as COSICC_DA_group is able to correct for the spurious enrichment for marked cells resulting from the experimental bias explained above. 
 
 ```{r,fig.width=7}
 COSICC_DA_result <- 
-    COSICC_DA_cell_type(sce_case=sce_sim_cell_type_case_sampled,
+    COSICC_DA_group(sce_case=sce_sim_cell_type_case_sampled,
                         sce_control=sce_sim_cell_type_control)
 ```
 
 ## Note about method and applicability
 
-COSICC_DA_cell_type assumes that the true median depletion or enrichment of marked cells across all cell types is 0. In our example, at most 4 groups could be depleted for the method to identify the true enrichment and depletion. 
+COSICC_DA_group assumes that the true median depletion or enrichment of marked cells across all cell types is 0. In our example, at most 4 groups could be depleted for the method to identify the true enrichment and depletion. 
 
 # COSICC_kinetics
 
@@ -190,7 +190,7 @@ COSICC_kinetics identifies whether, as a result of a perturbation,  there is sig
 
 # Simulating data
 
-Like for COSICC_DA_cell_type above, we first simulate control data using the Splatter package. 
+Like for COSICC_DA_group above, we first simulate control data using the Splatter package. 
 
 ## Simulating the control experiment
 
