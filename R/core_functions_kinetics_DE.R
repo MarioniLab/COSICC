@@ -4,6 +4,8 @@
 #' @import ggrepel
 #' @import ggthemes
 #' @import nebula
+#' @import batchelor
+#' @import destiny
 
 #' @title find_dynamic_genes
 #' @details Identification of genes that vary significantly across stages (FDR < max_FDR_across_time_points)
@@ -33,7 +35,7 @@ find_dynamic_genes <- function(sce,excluded_genes=NULL,FDR_across_time_points=10
 }
 
 
-#' @import destiny
+
 #' @title compute_and_plot_pseudotime
 #' @details The function compute_and_plot_pseudotime computes diffusion maps, and identifies the diffusion component
 #' most correlated with embryonic stage. The function also prints plots of the first two diffusion components,
@@ -163,7 +165,7 @@ volcano_plot <- function(vector_FDR,vector_effect_sizes,thresh_FDR=0.1,max_highl
 
 }
 
-#' @import batchelor
+
 COSICC_DE <- function(sce_case, sce_control,norm_library=TRUE){
   if (norm_library){
     sce_batch_normalised <- multiBatchNorm(sce_case,sce_control)
