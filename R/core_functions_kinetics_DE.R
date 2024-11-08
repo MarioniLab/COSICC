@@ -1,11 +1,18 @@
-#' @import SingleCellExperiment
+globalVariables(c("DC1", "DC2","celltype","dpt","effect","FDR","gene"))
 #' @import scran
 #' @import scater
-#' @import ggrepel
 #' @import ggthemes
-#' @import nebula
-#' @import batchelor
-#' @import destiny
+#' @importFrom ggrepel geom_text_repel
+#' @importFrom stats wilcox.test
+#' @importFrom stats p.adjust
+#' @importFrom stats lm
+#' @importFrom stats complete.cases
+#' @importFrom destiny DiffusionMap
+#' @importFrom destiny eigenvectors
+#' @importFrom stats cor
+#' @import ggplot2
+
+
 
 #' @title find_dynamic_genes
 #' @details Identification of genes that vary significantly across stages (FDR < max_FDR_across_time_points)
@@ -114,13 +121,13 @@ Wilcoxon_test_marked_vs_unmarked <- function(marked_sce){
 #' lineage trajectory.
 #' @param alpha type I error cutoff for the Wilcoxon signed rank test, the default is set to 0.1
 #' @return a list containing
-#' @param p_value the p-value of a Wilcoxon rank-sum test determining
+#' 1) p_value: the p-value of a Wilcoxon rank-sum test determining
 #' whether there is significant difference in developmental progression along the lineage trajectory
 #' between marked and unmarked cells of the case data set
-#' @param convidence_interval_overlapping_with_control logical, if TRUE then the 95 percent confidence intervals for
+#' 2)  convidence_interval_overlapping_with_control: logical, if TRUE then the 95 percent confidence intervals for
 #' the Wilcoxon statistics for the case and control data sets overlap, and any difference between
 #' marked and unmarked cells for the case data set cannot be seen as significant relative to the control
-#' @param sig logical, whether the p-value is significant at level alpha, and there is no overlap between the
+#' 3)  sig: logical, whether the p-value is significant at level alpha, and there is no overlap between the
 #' confidence intervals for the case and control data sets
 #' @export
 COSICC_kinetics <- function(sce_case,sce_control,alpha=0.1){
@@ -166,21 +173,3 @@ volcano_plot <- function(vector_FDR,vector_effect_sizes,thresh_FDR=0.1,max_highl
 }
 
 
-COSICC_DE <- function(sce_case, sce_control,norm_library=TRUE){
-  if (norm_library){
-    sce_batch_normalised <- multiBatchNorm(sce_case,sce_control)
-    sce_case <- sce_batch_normalised[[1]]
-    sce_control <- sce_batch_normalised[[2]]
-  }
-  sce_temp <- cbind(sce_case,sce_control)
-  sce_temp$dataset <- c(rep("case",ncol(sce_case)),rep("control",ncol(sce_control)))
-  sce_temp$dataset_marked <- FALSE
-  sce_temp$dataset_marked[sce_temp$dataset =="case"& sce_temp$marked] <- TRUE
-  sce_data <- scToNeb(obj = sce_temp, assay = "counts", id = "sample", pred = c("dataset","marked","dataset_marked"), offset="sizeFactor")
-  df <- model.matrix(~dataset+marked+dataset_marked, data=sce_data$pred)
-  markers_temp <- nebula(sce_data$count,sce_data$id,pred=df[,c("(Intercept)","datasetcontrol","markedTRUE","dataset_markedTRUE")],offset=sce_data$offset)
-  temp <- markers_temp$summary
-  temp$DE_gene_name <- gene_conv$V2[match(temp$gene,gene_conv$V1)]
-  temp$FDR <- p.adjust(temp$p_dataset_markedTRUE,method="BH")
-  return(temp)
-}

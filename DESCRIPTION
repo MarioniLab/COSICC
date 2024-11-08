@@ -2,11 +2,29 @@ Package: COSICC
 Type: Package
 Title: COmperative SIngle-Cell RNA-sequencing analyis for Complex cell populations
 Version: 0.1.0
-Author: Magdalena Strauss
-Maintainer: Magdalena Strauss <magdas@ebi.ac.uk>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Authors@R: 
+    person("Magdalena", "Strauss", , "m.strauss@exeter.ac.uk", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: COmperative SIngle-Cell RNA-sequencing analyis for Complex cell populations. The package tests for differential abundance at the level of any group of cells and for delays along lineage trajectories.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+Imports: 
+    SingleCellExperiment,
+    ggplot2,
+    ggrepel,
+    scales,
+    ggthemes
+Remotes: 
+    github::theislab/destiny
+Depends:
+    splatter,
+    scran,
+    scater,
+    dplyr,
+    destiny
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
 RoxygenNote: 7.3.2

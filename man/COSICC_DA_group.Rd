@@ -22,7 +22,7 @@ and 'cell_type'}
 colData needs to include the slots 'marked' (TRUE/FALSE) for the presence
 of a perturbation (CRISPR, drug, disease etc.)}
 
-\item{alpha}{significance level, default is 10% FDR}
+\item{alpha}{significance level, default is 0.1}
 
 \item{thresh_marked_control}{minimum number of marked cells per cell type in the control data set}
 
@@ -31,9 +31,12 @@ of a perturbation (CRISPR, drug, disease etc.)}
 \value{
 data.frame with the following columns: cell_type, odds_ratio-odds ratio of the percentage of
 marked cells among the cells in the case data versus the respective ratio for the control experiment,
-p_values, sig- whether a cell_type is significantly enriched, depleted, or not enriched
+p_values, sig (whether a cell_type is significantly enriched, depleted, or not enriched)
 }
 \description{
+COSICC_DA_group
+}
+\details{
 COSICC_DA_group performs differential abundance testing
 for perturbation experiments relative to control experiments.
 }

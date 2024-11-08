@@ -1,11 +1,10 @@
 ---
-title: "Introduction to COSICC"
+title: "Intro_to_COSICC"
 author: "Magdalena Strauss"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
-bibliography: references.bib
 vignette: >
-  %\VignetteIndexEntry{Introduction to COSICC}
+  %\VignetteIndexEntry{Intro_to_COSICC}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,14 +19,6 @@ For exact reproducibility, we set a fixed seed.
 ```{r}
 set.seed(112244)
 library(COSICC)
-suppressMessages(library(scran))
-suppressMessages(library(scater))
-suppressMessages(library(splatter))
-suppressMessages(library(dplyr))
-suppressMessages(library(destiny))
-suppressMessages(library(methods))
-suppressMessages(library(MASS))
-suppressMessages(library(mpath))
 ```
 
 # COSICC_DA_group 

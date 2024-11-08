@@ -1,10 +1,16 @@
-
+globalVariables(c("cell_type", "sig"))
 #' @import SingleCellExperiment
 #' @import ggplot2
+#' @import splatter
+#' @import dplyr
 #' @importFrom ggrepel geom_text_repel
 #' @importFrom scales pseudo_log_trans
+#' @importFrom stats median
+#' @importFrom stats p.adjust
+#' @importFrom stats fisher.test
+#'
 #' @title COSICC_DA_group
-#' @description COSICC_DA_group performs differential abundance testing
+#' @details COSICC_DA_group performs differential abundance testing
 #' for perturbation experiments relative to control experiments.
 #' @param sce_case SingleCellExperiment for the case data set,
 #' colData needs to include the slots 'marked' (TRUE/FALSE) for the presence
@@ -13,12 +19,12 @@
 #' @param sce_control SingleCellExperiment for the control data set,
 #' colData needs to include the slots 'marked' (TRUE/FALSE) for the presence
 #' of a perturbation (CRISPR, drug, disease etc.)
-#' @param alpha significance level, default is 10% FDR
-#' @return data.frame with the following columns: cell_type, odds_ratio-odds ratio of the percentage of
-#' marked cells among the cells in the case data versus the respective ratio for the control experiment,
-#' p_values, sig- whether a cell_type is significantly enriched, depleted, or not enriched
+#' @param alpha significance level, default is 0.1
 #' @param thresh_marked_control minimum number of marked cells per cell type in the control data set
 #' @param thresh_unmarked_case minimum number of unmarked cells per cell type in the case data set
+#' @return data.frame with the following columns: cell_type, odds_ratio-odds ratio of the percentage of
+#' marked cells among the cells in the case data versus the respective ratio for the control experiment,
+#' p_values, sig (whether a cell_type is significantly enriched, depleted, or not enriched)
 #' @export
 COSICC_DA_group <- function(sce_case,sce_control,alpha=0.1,thresh_marked_control=5,thresh_unmarked_case=5){
   sce_case_marked <- sce_case[,sce_case$marked]
