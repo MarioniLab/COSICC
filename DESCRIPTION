@@ -10,7 +10,6 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports: 
-    SingleCellExperiment,
     ggplot2,
     ggrepel,
     scales,
@@ -18,6 +17,7 @@ Imports:
 Remotes: 
     github::theislab/destiny
 Depends:
+    SingleCellExperiment,
     splatter,
     scran,
     scater,

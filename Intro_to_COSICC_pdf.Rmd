@@ -1,29 +1,27 @@
 ---
-title: "Intro_to_COSICC"
+title: "Intro to COSICC"
 author: "Magdalena Strauss"
 date: "`r Sys.Date()`"
-bibliography: references.bib
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Intro_to_COSICC}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+bibliography: vignettes/references.bib
+output: pdf_document
 ---
 
 Welcome to COSICC! COSICC R an R package for **CO**mparative analysis of **S**ingle-**C**ell-RNA-seq data for **C**omplex cell populations. This vignette gives an introduction and overview to COSICC. 
 
 # Overview and use cases
 
+
 For exact reproducibility, we set a fixed seed.
 
 ```{r}
 set.seed(112244)
-library(COSICC)
+suppressPackageStartupMessages(library(COSICC))
+suppressPackageStartupMessages(library(SingleCellExperiment))
 ```
 
 # COSICC_DA_group 
 
-COSICC_DA_group tests for differential abundance after perturbations, compared to a control experiment without perturbations. This type of set-up occurs for many experiments. One example is patient data. Assume we have an scRNA-seq data set of a cancer patient at the day of diagnosis, and another one from after treatment. Both samples contain normal and malignant cells, and different cell types. 
+COSICC_DA_group tests for differential abundance of groups of cells (.e.g. cell types) after perturbations, compared to a control experiment without perturbations. This type of set-up occurs for many experiments. One example is patient data. Assume we have an scRNA-seq data set of a cancer patient at the day of diagnosis, and another one from after treatment. Both samples contain normal and malignant cells, and different cell types. 
 
 ## Simulating data
 
@@ -291,6 +289,113 @@ We now run COSICC_kinetics to test whether the delay in development along the li
 ```{r}
 COSICC_kinetics(sce_case=sce_kinetics_case,sce_control=sce_kinetics_control)
 ```
+
+# Illustration of COSICC_DA_lineage
+
+COSICC_DA_lineage tests for differential abundance of lineages after perturbations, compared to a control experiment without perturbations. The input for lineage contribution of cells is a score for each cell that reflects the probability of the cell being part of the lineage, e.g. Waddington-OT scores (@Schiebinger). 
+
+## Simulation of lineage scores 
+
+We simulate scores for 5 lineages, with one lineage (lineage_1) reduced for marked cells in the perturbed condition. First, we simulate the scores for the control condition. 
+
+```{r}
+sim_lineage_scores_control <- matrix(rnorm(1500) * 0.1,nrow=300,ncol=5)
+for (j in 1:5){
+  sim_lineage_scores_control[((j-1)*60+1):(j*60),j] <- rnorm(60) *0.1+0.85
+}
+sim_lineage_scores_control <- apply(sim_lineage_scores_control,1,function(x) x/colSums(sim_lineage_scores_control))
+sim_lineage_scores_control <- mapply(function(x) min(x,1),sim_lineage_scores_control)
+sim_lineage_scores_control <- mapply(function(x) max(x,0),sim_lineage_scores_control)
+dim(sim_lineage_scores_control) <- c(300,5)
+colnames(sim_lineage_scores_control) <- paste0("lineage_",1:5)
+rownames(sim_lineage_scores_control) <- paste0("cell_",1:300,"_control")
+sim_lineage_scores_control <- as.data.frame(sim_lineage_scores_control)
+colData_DA_lineage_control <- data.frame(cell=rownames(sim_lineage_scores_control),
+                              marked = sample(c(TRUE,FALSE),300,replace=TRUE))
+sim_lineage_scores_control$id <- colData_DA_lineage_control$cell
+colData_DA_lineage_control$cell <- sim_lineage_scores_control$id
+sce_DA_lineage_control <- SingleCellExperiment(colData=colData_DA_lineage_control)
+```
+
+We plot the scores for lineage 1 for the control condition. 
+
+```{r,fig.width=4,fig.height=2}
+df <- as.data.frame(sim_lineage_scores_control)
+df$marked <- colData_DA_lineage_control$marked
+ggplot(df,aes(x=lineage_1,color=marked,fill=marked)) + 
+  geom_density(alpha=0.5) +
+  scale_color_manual(values=c("FALSE"="darkblue","TRUE"="red"))+
+  scale_fill_manual(values=c("FALSE"="darkblue","TRUE"="red"))+
+  theme_classic()+
+  labs(title="Scores for lineage 1 - control condition")
+```
+
+Now we simulate the unmarked cells for the perturbed condition. 
+
+```{r}
+sim_lineage_scores_case_unmarked <- matrix(rnorm(750) * 0.1,nrow=150,ncol=5)
+for (j in 1:5){
+  sim_lineage_scores_case_unmarked[((j-1)*30+1):(j*30),j] <- rnorm(30) *0.1+0.85
+}
+sim_lineage_scores_case_unmarked <- mapply(function(x) min(x,1),sim_lineage_scores_case_unmarked)
+sim_lineage_scores_case_unmarked <- mapply(function(x) max(x,0),sim_lineage_scores_case_unmarked)
+dim(sim_lineage_scores_case_unmarked) <- c(150,5)
+colnames(sim_lineage_scores_case_unmarked) <- paste0("lineage_",1:5)
+rownames(sim_lineage_scores_case_unmarked) <- paste0("cell_",1:150,"_case")
+sim_lineage_scores_case_unmarked <- as.data.frame(sim_lineage_scores_case_unmarked)
+colData_DA_lineage_case_unmarked <- data.frame(cell=rownames(sim_lineage_scores_case_unmarked),
+                              marked = rep(FALSE,150))
+sim_lineage_scores_case_unmarked$id <- colData_DA_lineage_case_unmarked$cell
+colData_DA_lineage_case_unmarked$cell <- sim_lineage_scores_case_unmarked$id
+sce_DA_lineage_case_unmarked <- SingleCellExperiment(colData=colData_DA_lineage_case_unmarked)
+```
+
+We simulate the marked cells for the perturbed condition, with fewer cells assigned to lineage 1.
+
+```{r}
+sim_lineage_scores_case_marked <- matrix(rnorm(750) * 0.1,nrow=150,ncol=5)
+sim_lineage_scores_case_marked[sample(1:30,5),1] <- rnorm(5) *0.1+0.85 # a 
+# smaller number of cells is assigned to lineage 1 for the perturbed condition
+for (j in 2:5){
+  sim_lineage_scores_case_marked[((j-1)*30+1):(j*30),j] <- runif(30) *0.1+0.85
+}
+sim_lineage_scores_case_marked <- mapply(function(x) min(x,1),sim_lineage_scores_case_marked)
+sim_lineage_scores_case_marked <- mapply(function(x) max(x,0),sim_lineage_scores_case_marked)
+dim(sim_lineage_scores_case_marked) <- c(150,5)
+colnames(sim_lineage_scores_case_marked) <- paste0("lineage_",1:5)
+rownames(sim_lineage_scores_case_marked) <- paste0("cell_",151:300,"_case")
+sim_lineage_scores_case_marked <- as.data.frame(sim_lineage_scores_case_marked)
+colData_DA_lineage_case_marked <- data.frame(cell=rownames(sim_lineage_scores_case_marked),
+                              marked = rep(TRUE,150))
+sim_lineage_scores_case_marked$id <- colData_DA_lineage_case_marked$cell
+colData_DA_lineage_case_marked$cell <- sim_lineage_scores_case_marked$id
+sce_DA_lineage_case <- 
+  SingleCellExperiment(colData=rbind(colData_DA_lineage_case_marked,
+                      colData_DA_lineage_case_unmarked),
+                      )
+
+```
+
+We plot the scores for lineage 1 for the perturbed condition. 
+
+```{r,fig.width=4,fig.height=2}
+df <- rbind(sim_lineage_scores_case_marked,sim_lineage_scores_case_unmarked)
+df$marked <- sce_DA_lineage_case$marked
+ggplot(df,aes(x=lineage_1,color=marked,fill=marked)) + 
+  geom_density(alpha=0.5) +
+  scale_color_manual(values=c("FALSE"="darkblue","TRUE"="red"))+
+  scale_fill_manual(values=c("FALSE"="darkblue","TRUE"="red"))+
+  theme_classic()+
+  labs(title="Scores for lineage 1 - perturbed condition")
+```
+We apply COSICC_DA_lineage and identify the depletion of lineage 1, illustrated in the plot below.
+
+```{r}
+lineage_scores <- rbind(sim_lineage_scores_case_marked,
+                        sim_lineage_scores_case_unmarked,sim_lineage_scores_control)
+COSICC_DA_lineage(sce_DA_lineage_case,sce_DA_lineage_control,lineage_scores,alpha=0.1)
+```
+
 
 # Session Information
 

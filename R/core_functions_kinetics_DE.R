@@ -12,8 +12,6 @@ globalVariables(c("DC1", "DC2","celltype","dpt","effect","FDR","gene"))
 #' @importFrom stats cor
 #' @import ggplot2
 
-
-
 #' @title find_dynamic_genes
 #' @details Identification of genes that vary significantly across stages (FDR < max_FDR_across_time_points)
 #' and for which there is no strong evidence of variation within batches of the same stage for a reference data set.
