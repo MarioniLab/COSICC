@@ -15,7 +15,6 @@ biocViews: CellBiology,
     Software,
     Visualization
 Depends:
-    R (>= 4.1.0)
     SingleCellExperiment,
     splatter,
     scran,
