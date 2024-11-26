@@ -6,6 +6,7 @@ if(!require(devtools)){
 if(!require(BiocManager)){
     install.packages("BiocManager")
 }
+devtools::install_github("https://github.com/theislab/destiny",dependencies = TRUE, upgrade = TRUE,build_vignettes = TRUE)
 options(repos = BiocManager::repositories())
 devtools::install_github("https://github.com/MarioniLab/COSICC",dependencies = TRUE, upgrade = TRUE,build_vignettes = TRUE)
 
