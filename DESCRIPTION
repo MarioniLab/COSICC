@@ -9,20 +9,19 @@ Description: COmperative SIngle-Cell RNA-sequencing analyis for Complex cell pop
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Imports: 
-    ggplot2,
-    ggrepel,
-    scales,
-    ggthemes
-Remotes: 
-    github::theislab/destiny
 Depends:
     SingleCellExperiment,
     splatter,
     scran,
     scater,
     dplyr,
-    destiny
+    destiny,
+    ggplot2,
+    ggrepel,
+    scales,
+    ggthemes
+Remotes: 
+    github::theislab/destiny
 Suggests: 
     knitr,
     rmarkdown
