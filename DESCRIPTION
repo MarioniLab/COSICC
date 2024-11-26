@@ -14,6 +14,8 @@ biocViews: CellBiology,
     Clustering,
     Software,
     Visualization
+Remotes: 
+    github::theislab/destiny
 Depends:
     SingleCellExperiment,
     splatter,
@@ -23,9 +25,8 @@ Depends:
     ggplot2,
     ggrepel,
     scales,
-    ggthemes
-Remotes: 
-    github::theislab/destiny
+    ggthemes,
+    destiny
 Suggests: 
     knitr,
     rmarkdown
