@@ -3,12 +3,20 @@ The COSICC R package can be installed using the devtools R package as follows.
 if(!require(devtools)){
     install.packages("devtools")
 }
+
 if(!require(BiocManager)){
     install.packages("BiocManager")
 }
-devtools::install_github("https://github.com/theislab/destiny",dependencies = TRUE, upgrade = TRUE,build_vignettes = TRUE)
+
 options(repos = BiocManager::repositories())
+
+BiocManager::install("scRNAseq")
+
+devtools::install_github("https://github.com/theislab/destiny",dependencies = TRUE)
+
 devtools::install_github("https://github.com/MarioniLab/COSICC",dependencies = TRUE, upgrade = TRUE,build_vignettes = TRUE)
+
+
 
 There is a pfd vignette calledd Intro_to_COSICC_pdf.pdf.
 
