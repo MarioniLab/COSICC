@@ -9,16 +9,18 @@ Description: COmperative SIngle-Cell RNA-sequencing analyis for Complex cell pop
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+biocViews: CellBiology,
+    CellBasedAssays,
+    Clustering,
+    Software,
+    Visualization
 Depends:
-    R (>= 3.3.0)
-biocViews:
-Imports:
+    R (>= 4.1.0)
     SingleCellExperiment,
     splatter,
     scran,
     scater,
     dplyr,
-    destiny,
     ggplot2,
     ggrepel,
     scales,
