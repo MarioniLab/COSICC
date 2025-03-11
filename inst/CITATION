@@ -1,9 +1,0 @@
-bibentry(
-  bibtype  = "Article",
-  	title = {Bespoke single cell molecular and tissue-scale analysis reveals mechanisms underpinning development and disease in complex developing cell populations},
-  author   = {Magdalena E Strauss and Mai-Linh Nu Ton and Samantha Mason and Jaana Bagri and Luke TG Harland and Ivan Imaz-Rosshandler and Nicola K Wilson and Jennifer Nichols and Richard CV Tyser and Berthold G{\"o}ttgens and John C Marioni and Carolina Guibentif},
-  journal = {bioRxiv}
-  year = {2023},
-  doi      = https://doi.org/10.1101/2023.10.11.561904
-)
-
