@@ -2,41 +2,79 @@
 % Please edit documentation in R/core_functions_DA_testing_general.R
 \name{COSICC_DA_group}
 \alias{COSICC_DA_group}
-\title{COSICC_DA_group}
+\title{COSICC_DA_group: Differential abundance analysis for groups of cells (e.g. cell types)}
 \usage{
 COSICC_DA_group(
   sce_case,
   sce_control,
   alpha = 0.1,
   thresh_marked_control = 5,
-  thresh_unmarked_case = 5
+  thresh_unmarked_case = 5,
+  marked_col = "marked",
+  celltype_col = "cell_type",
+  seed = NULL
 )
 }
 \arguments{
-\item{sce_case}{SingleCellExperiment for the case data set,
-colData needs to include the slots 'marked' (TRUE/FALSE) for the presence
-of a perturbation (CRISPR, drug, disease etc.) or fluorescent marking,
-and 'cell_type'}
+\item{sce_case}{A \code{SingleCellExperiment} or \code{Seurat} object for the case condition, e.g. a knock-out
+chimera data set.}
 
-\item{sce_control}{SingleCellExperiment for the control data set,
-colData needs to include the slots 'marked' (TRUE/FALSE) for the presence
-of a perturbation (CRISPR, drug, disease etc.)}
+\item{sce_control}{A \code{SingleCellExperiment} or \code{Seurat} object for the control condition, e.g. 
+a wild-type chimera data set.}
 
-\item{alpha}{significance level, default is 0.1}
+\item{alpha}{Numeric scalar, significance cutoff for FDR (default 0.1).}
 
-\item{thresh_marked_control}{minimum number of marked cells per cell type in the control data set}
+\item{thresh_marked_control}{Integer scalar, minimum number of marked cells in control to retain 
+a cell type in the analysis (default 5).}
 
-\item{thresh_unmarked_case}{minimum number of unmarked cells per cell type in the case data set}
+\item{thresh_unmarked_case}{Integer scalar, minimum number of unmarked cells in case to retain a cell 
+type in the analysis (default 5).}
+
+\item{marked_col}{Character, name of the meta.data (SeuratObject) or colData (SingleCellObject)
+column indicating marked status (logical TRUE/FALSE) (default "marked").}
+
+\item{celltype_col}{Character, name of the meta.data (SeuratObject) or colData (SingleCellObject)
+column indicating cell types (default "cell_type").}
+
+\item{seed}{Integer or NULL (default), allows the user to set a seed in the simulations for 
+reproducibility}
 }
 \value{
-data.frame with the following columns: cell_type, odds_ratio-odds ratio of the percentage of
-marked cells among the cells in the case data versus the respective ratio for the control experiment,
-p_values, sig (whether a cell_type is significantly enriched, depleted, or not enriched)
+A \code{data.frame} with columns:
+\describe{
+  \item{cell_type}{Cell type name.}
+  \item{FDR}{FDR computed using the Benjamini-Hochberg method.}
+  \item{odds_ratio}{Odds ratio of enrichment/depletion for each group of cells or cell type.}
+  \item{sig}{Significance status: "enriched", "depleted", or "not significant".}
+}
+A plot showing the log10 odds ratio vs. -log10 FDR is also displayed.
 }
 \description{
-COSICC_DA_group
+Performs differential abundance (DA) testing comparing marked versus unmarked cells 
+between case and control single-cell data sets. For example, the case data set may be chimera data set with
+a knock-out, and the control data set a wild-type chimera data set. This function supports both 
+\code{SingleCellExperiment} and \code{Seurat} objects as inputs.
+
+The method subsamples cells to correct for experimental bias and uses 
+Fisher's exact test to estimate the odds ratio and p-values 
+for enrichment or depletion of cell types in marked relative to unmarked cells.
+The function output includes a visualisation of the odds ratios and significance levels.
 }
 \details{
-COSICC_DA_group performs differential abundance testing
-for perturbation experiments relative to control experiments.
+The function:
+\itemize{
+  \item Extracts and verifies metadata columns for marked status and cell types.
+  \item Filters cell types based on minimum counts in marked control and unmarked case samples.
+  \item Corrects for experimental bias in cell sampling by repeatedly subsampling to create synthetic
+experiments with unbiased cell numbers.
+  \item Produces a volcano-style plot highlighting enriched and depleted cell types.
+}
+}
+\examples{
+\dontrun{
+# Assuming sce_case and sce_control are Seurat or SingleCellExperiment objects with required metadata
+result <- COSICC_DA_group(sce_case, sce_control)
+head(result)
+}
+
 }
