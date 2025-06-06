@@ -14,6 +14,13 @@ Welcome to COSICC! COSICC R an R package for **CO**mparative analysis of **S**in
 For exact reproducibility, we set a fixed seed.
 
 ```{r}
+
+knitr::opts_chunk$set(
+  warning = FALSE, 
+  message = FALSE, 
+  error = FALSE
+)
+
 set.seed(112244)
 suppressPackageStartupMessages(library(COSICC))
 suppressPackageStartupMessages(library(SingleCellExperiment))

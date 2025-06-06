@@ -1,0 +1,157 @@
+---
+title: "COSICC_DA_group and COSICC_DA_lineage"
+author: "Magdalena Strauss"
+date: "`r Sys.Date()`"
+bibliography: vignettes/references.bib
+output: pdf_document
+---
+
+This tutorial illustrates how to use COSICC_DA_group with SingleCellExperiments and with 
+SeuratObjects. 
+
+```{r}
+
+knitr::opts_chunk$set(
+  warning = FALSE, 
+  message = FALSE, 
+  error = FALSE
+)
+
+suppressPackageStartupMessages(library(COSICC))
+```
+
+# COSICC_DA_group for SingleCellExperiments
+
+First, we simulate a chimera-style data set, where cells have a fluorescent marker tdTomato or not. 
+
+```{r}
+sim_data_sce <- simulate_sce(seed = 10)
+```
+
+The function above simulated a knockout and a wild-type chimera data set. 
+
+```{r}
+sce_knockout <- sim_data_sce$case
+sce_WT <- sim_data_sce$control
+```
+
+Let's have a look at the simulated data sets:
+
+```{r}
+colData(sce_knockout)
+```
+
+
+```{r}
+colData(sce_WT)
+```
+The tdTomato coloumn contains the values "pos" and "neg".
+
+To use COSICC_DA_group we need to rename them to TRUE and FALSE. 
+
+```{r}
+sce_WT$tdTomato <- sce_WT$tdTomato == "pos" 
+sce_knockout$tdTomato <- sce_knockout$tdTomato == "pos"
+```
+
+Furthermore, we need to rename the colData. 
+
+```{r}
+names(colData(sce_WT))[names(colData(sce_WT))== "tdTomato"] <- "marked"
+names(colData(sce_WT))[names(colData(sce_WT)) == "celltype"] <- "cell_type"
+
+names(colData(sce_knockout))[names(colData(sce_knockout))== "tdTomato"] <- "marked"
+names(colData(sce_knockout))[names(colData(sce_knockout)) == "celltype"] <- "cell_type"
+```
+
+We also make sure that the cells from the WT and knockout data sets have different names. 
+
+```{r}
+colnames(sce_WT) <- paste0(colnames(sce_WT),"_WT")
+colnames(sce_knockout) <- paste0(colnames(sce_knockout),"_knockout")
+```
+
+Now the data look as follows:
+
+```{r}
+head(colData(sce_WT))
+```
+
+We can now COSICC_DA_group to identify depletion and/or enrichment of cell types for the tdTomato positive cells in the knockout chimeras. 
+
+```{r}
+DA_result_sce <- COSICC_DA_group(
+    sce_case=sce_knockout, 
+    sce_control=sce_WT
+) 
+```
+The figure above illustrates the cell types Group1, Group2 and Group3 are depleted for the tdTomato positive group in the knockout data set compared to the wild-type data set. 
+
+The output of the function COSICC_DA_group is a  data frame with the following columns. 
+
+| Column Name   | Description                                                                 |
+|---------------|-----------------------------------------------------------------------------|
+| `cell_type`   | Cell type name.                                                              |
+| `FDR`         | FDR computed using the Benjamini-Hochberg method.                             |
+| `odds_ratio`  | Odds ratio of enrichment/depletion for each group of cells or cell type.    |
+| `sig`         | Significance status: "enriched", "depleted", or "not significant".           |
+
+Below we print the output. 
+
+```{r}
+DA_result_sce
+```
+
+# COSICC_DA_group for SeuratObject
+
+First, we simulate a chimera-style data set, where cells have a fluorescent marker tdTomato or not. 
+
+```{r}
+library(Seurat)
+sim_data_seurat <- simulate_seurat(seed = 10)
+seurat_knockout <- sim_data_seurat$case
+seurat_WT <- sim_data_seurat$control
+```
+
+Now we create SingleCellExperiments.
+
+```{r}
+sce_WT <- SingleCellExperiment(assays=list(counts=seurat_WT@assays$RNA),colData=seurat_WT@meta.data)
+sce_knockout <- SingleCellExperiment(assays=list(counts=seurat_knockout@assays$RNA),colData=seurat_knockout@meta.data)
+```
+
+Now you can use COSICC_DA_group as described in the section on COSICC_DA_group for SingleCellExperiments above. 
+
+# COSICC_DA_lineage
+
+To illustrate COSICC_DA_lineage, we simulate lineage scores. In application in development, these scores might be scores indicating probabilities of a cells turning into each lineage. We use example data from the package. 
+
+```{r}
+data(package="COSICC")
+```
+
+This shows that the package contains the following example data sets:
+
+lineage_scores           
+sce_DA_lineage_case      
+sce_DA_lineage_control  
+
+The scores look as follows:
+
+```{r}
+head(lineage_scores )
+```
+Note that one of the columns is called id and contains the cell names. 
+
+We can use the lineage scores and SingleCellExperiments as input to COSICC_DA_lineage. 
+
+```{r}
+lineage_result <- COSICC_DA_lineage(sce_DA_lineage_case,sce_DA_lineage_control,lineage_scores)
+```
+
+The output looks as follows:
+
+```{r}
+head(lineage_result)
+```
+

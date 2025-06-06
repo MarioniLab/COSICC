@@ -168,7 +168,7 @@ Below we show that, by running COSICC_DA_group, we are able to identify the diff
 ```{r,fig.width=7}
 COSICC_DA_result <- 
     COSICC_DA_group(sce_case=sce_sim_cell_type_case_sampled,
-                        sce_control=sce_sim_cell_type_control)
+                       sce_control=sce_sim_cell_type_control)
 ```
 
 ## Note about method and applicability

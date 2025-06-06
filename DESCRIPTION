@@ -26,7 +26,8 @@ Depends:
     ggrepel,
     scales,
     ggthemes,
-    destiny
+    destiny,
+    R (>= 3.5)
 Suggests: 
     knitr,
     rmarkdown
