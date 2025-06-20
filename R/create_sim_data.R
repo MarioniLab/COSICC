@@ -207,3 +207,123 @@ simulate_seurat <- function(
     control = seurat_control
   ))
 }
+
+#' @title simulate_sce_kinetics: Simulate SingleCellExperiment objects with multiple 
+#' lineaage trajectories and delay along some of the trajectories for perturbed cells
+#' @description
+#' Simulates control and case `SingleCellExperiment` objects using the 
+#' splatter package's trajectory simulation.
+#' Five lineage trajectories are simulated; for three of them, some tdTomato+ 
+#' cells with higher pseudotime are depleted to simulate developmental delay, while for two, 
+#' no such depletion is simulated.
+#' The function allows for reproducibility via a user-specified random seed.
+#'
+#' @param batchCells Integer. Number of cells to simulate. Default is 500.
+#' @param nGenes Integer. Number of genes to simulate. Default is 10.
+#' @param de.prob Numeric. Probability of a gene being differentially expressed
+#' along the lineage trajectory. 
+#' Default is 0.5.
+#' @param nPaths Integer. Number of trajectories (paths) to simulate. Default is 5.
+#' @param seed Integer or NULL. Random seed for reproducibility. Default is NULL.
+#' @param control_deplete_n Integer. Number of tdTomato+ high-pseudotime 
+#' cells to deplete per lineage trajectory for the control data set. Default is 40.
+#' @param case_deplete_n Integer. Number of tdTomato+ high-pseudotime cells 
+#' to deplete per depleted trajectory for the case data set, e.g. the knockout chimera. Default is 80.
+#' @param depleted_paths Character vector. Names of trajectories to deplete. 
+#' Default is c("Path1", "Path2", "Path3").
+#'
+#' @return A named list containing two `SingleCellExperiment` objects:
+#' \describe{
+#'   \item{control}{SCE object representing the control condition. The \code{colData} contains:
+#'     \itemize{
+#'       \item \code{Cell}: Cell identifier
+#'       \item \code{Path}: Lineage rajectory assignment (e.g., "Path1", "Path2", ...)
+#'       \item \code{pt}: Pseudotime value for each cell
+#'       \item \code{tdTomato}: Logical, whether the cell is tdTomato positive
+#'       \item \code{nGene, nUMI, log10_total_counts, ...}: Additional QC columns from splatter
+#'     }
+#'   }
+#'   \item{case}{SCE object representing the case condition, with additional depletion of tdTomato+ cells in selected trajectories. The \code{colData} columns are as above.}
+#' }
+#'
+#' @importFrom splatter splatSimulatePaths
+#' @importFrom scater logNormCounts
+#' @import ggplot2
+#' @export
+simulate_sce_kinetics <- function(
+    batchCells = 5000,
+    nGenes = 10,
+    de.prob = 0.5,
+    nPaths = 5,
+    seed = NULL,
+    control_deplete_n = 10,
+    case_deplete_n = "all", # can be "all" or a number
+    depleted_paths = c("Path1", "Path2", "Path3")
+) {
+  
+  if (!is.null(seed)) set.seed(seed)
+  
+  # Simulate control with multiple trajectories
+  sce_kinetics_control <- splatter::splatSimulatePaths(
+    batchCells = batchCells,
+    nGenes = nGenes,
+    de.prob = de.prob,
+    group.prob = rep(1/nPaths, nPaths),
+    verbose = FALSE
+  )
+  
+  # Rename Step to pt (pseudotime)
+  sce_kinetics_control$pt <- sce_kinetics_control$Step
+  sce_kinetics_control$Step <- NULL
+  
+  # Mark tdTomato+ cells (more marked in early pseudotime)
+  n_tdTomato <- floor(0.5 * ncol(sce_kinetics_control))
+  tdTomato_cells <- sample(seq_len(ncol(sce_kinetics_control)), n_tdTomato)
+  sce_kinetics_control$tdTomato <- seq_len(ncol(sce_kinetics_control)) %in% tdTomato_cells
+  
+  # Deplete some tdTomato+ cells with higher pseudotime in selected lineage 
+  # trajectories for the control data
+  # (experimental rather than biological effect)
+  to_keep <- rep(TRUE, ncol(sce_kinetics_control))
+  for (path in depleted_paths) {
+    idx_path <- which(sce_kinetics_control$Group == path)
+    idx_tdTomato_highpt <- idx_path[sce_kinetics_control$tdTomato[idx_path] & 
+                                      sce_kinetics_control$pt[idx_path] > 
+                                      median(sce_kinetics_control$pt[idx_path])]
+    n_deplete <- min(control_deplete_n, length(idx_tdTomato_highpt))
+    if (n_deplete > 0) {
+      to_deplete <- sample(idx_tdTomato_highpt, n_deplete)
+      to_keep[to_deplete] <- FALSE
+    }
+  }
+  sce_kinetics_control <- sce_kinetics_control[, to_keep]
+  
+  # Normalisation
+  sce_kinetics_control <- scater::logNormCounts(sce_kinetics_control)
+  
+  # Simulate case (biological effect: remove only tdTomato+ high-pt cells in selected trajectories)
+  to_keep_case <- rep(TRUE, ncol(sce_kinetics_control))
+  for (path in depleted_paths) {
+    idx_path <- which(sce_kinetics_control$Group == path)
+    idx_tdTomato_highpt <- idx_path[sce_kinetics_control$tdTomato[idx_path] & 
+                                      sce_kinetics_control$pt[idx_path] > median(sce_kinetics_control$pt[idx_path])]
+    if (identical(case_deplete_n, "all")) {
+      # Remove all tdTomato+ high-pt cells (only these)
+      if (length(idx_tdTomato_highpt) > 0) {
+        to_keep_case[idx_tdTomato_highpt] <- FALSE
+      }
+    } else {
+      # Remove up to case_deplete_n tdTomato+ high-pt cells
+      n_deplete <- min(case_deplete_n, length(idx_tdTomato_highpt))
+      if (n_deplete > 0) {
+        to_deplete <- sample(idx_tdTomato_highpt, n_deplete)
+        to_keep_case[to_deplete] <- FALSE
+      }
+    }
+  }
+  sce_kinetics_case <- sce_kinetics_control[, to_keep_case]
+return(list(
+  control = sce_kinetics_control,
+  case = sce_kinetics_case
+))
+}

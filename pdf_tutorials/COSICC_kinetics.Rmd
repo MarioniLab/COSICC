@@ -1,0 +1,114 @@
+---
+title: "COSICC_kinetics"
+author: "Magdalena Strauss"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+This tutorial illustrates how to use COSICC_kinetics with SingleCellExperiments. 
+
+```{r}
+
+knitr::opts_chunk$set(
+  warning = FALSE, 
+  message = FALSE, 
+  error = FALSE
+)
+
+suppressPackageStartupMessages(library(COSICC))
+```
+
+
+First, we simulate a chimera-style data set, where cells have a fluorescent marker tdTomato or not, and which have several lineage trajetories. 
+
+```{r}
+sim_data_sce <- simulate_sce_kinetics(seed =10,batchCells=5000)
+```
+
+```{r}
+print(sim_data_sce$plots$case$Path1)
+```
+
+The function above simulated a knockout and a wild-type chimera data set. 
+
+```{r}
+sce_knockout_kinetics <- sim_data_sce$case
+sce_WT_kinetics <- sim_data_sce$control
+```
+
+Let's have a look at the simulated data sets:
+
+```{r}
+colData(sce_knockout_kinetics)
+```
+
+We need to rename the colData. 
+
+```{r}
+names(colData(sce_WT_kinetics))[names(colData(sce_WT_kinetics))== "tdTomato"] <- "marked"
+names(colData(sce_knockout_kinetics))[names(colData(sce_knockout_kinetics))== "tdTomato"] <- "marked"
+```
+
+We also make sure that the cells from the WT and knockout data sets have different names. 
+
+```{r}
+colnames(sce_WT_kinetics) <- paste0(colnames(sce_WT_kinetics),"_WT")
+colnames(sce_knockout_kinetics) <- paste0(colnames(sce_knockout_kinetics),"_knockout")
+```
+
+Now the data look as follows:
+
+```{r}
+head(colData(sce_WT_kinetics))
+```
+We can now apply COSICC_kinetics to each of the lineages separately. In our case the column of the colData that refers to the lineage trajectories is Group. Note that the colData needs to include the columns 'pt' for the pseudotime values and 'marked' for whether they have a fluorescent marker (e.g. tdTomato). Also note that the values in the column marked need to be logical (TRUE vs FALSE).
+
+```{r}
+lineages <- unique(sce_knockout_kinetics$Group)
+COSICC_kinetics_results <- list()
+for (j in seq_along(lineages)){
+  COSICC_kinetics_results[[j]] <- 
+    COSICC_kinetics(sce_case=sce_knockout_kinetics[,sce_knockout_kinetics$Group == lineages[j]],
+                    sce_control=sce_WT_kinetics[,sce_WT_kinetics$Group == lineages[j]])
+}
+```
+
+We summarise the results for the separate linaege trajetories as a joint data frame. 
+
+```{r}
+names(COSICC_kinetics_results) <- lineages
+df_COSICC_kinetics_results <- do.call(rbind, lapply(names(COSICC_kinetics_results), function(nm) {
+  cbind(path = nm, as.data.frame(COSICC_kinetics_results[[nm]], stringsAsFactors = FALSE))
+}))
+rownames(df) <- NULL
+df_COSICC_kinetics_results 
+```
+
+The plot below illustrates the data frame. COSICC_kinetics performs a Wilcoxon rank-sum test for the WT data and for the knockout data. This gives us a confidence interval for the knockout data and for the WT data. We only consider the result significant, if the Wilcoxon rank-sum test between the tdTomato positive and tdTomato negative cells is significant AND there is no overall between the confidence intervals for the knockout and the WT data, i.e. the two bars in the same row in the figure below do not overlap. 
+
+```{r,fig.height=3,fig.width=7}
+# Prepare for plotting
+df_COSICC_kinetics_results$path <- factor(df_COSICC_kinetics_results$path, levels = df_COSICC_kinetics_results$path) # keep order
+
+ggplot(df_COSICC_kinetics_results) +
+  # Control CI
+  geom_errorbarh(aes(y = path, xmin = lower_ci_bound_control, xmax = upper_ci_bound_control),
+                 height = 0.3, color = "#0072B2", size = 2, alpha = 0.6) + # blue
+  # Case CI
+  geom_errorbarh(aes(y = path, xmin = lower_ci_bound_case, xmax = upper_ci_bound_case,
+                     color = convidence_interval_overlapping_with_control),
+                 height = 0.1, size = 2) +
+  scale_color_manual(
+    name = "CI Overlap",
+    values = c("TRUE" = "#E69F00", "FALSE" = "#CC79A7"), # orange and purple
+    labels = c("TRUE" = "Overlap", "FALSE" = "No Overlap")
+  ) +
+  labs(
+    x = "Location parameter (Wilcoxon test)",
+    y = "Lineage trajectory",
+    title = "Confidence intervals from COSICC_kinetics\n(blue for WT data, 
+    magenta/yellow for knockout data"
+    
+  ) +
+  theme_classic()
+```

@@ -21,7 +21,7 @@ lineage trajectory.}
 }
 \value{
 a list containing
-1) p_value: the p-value of a Wilcoxon rank-sum test determining
+1) p_value_case: the p-value of a Wilcoxon rank-sum test determining
 whether there is significant difference in developmental progression along the lineage trajectory
 between marked and unmarked cells of the case data set
 2)  convidence_interval_overlapping_with_control: logical, if TRUE then the 95 percent confidence intervals for

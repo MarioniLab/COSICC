@@ -119,7 +119,7 @@ Wilcoxon_test_marked_vs_unmarked <- function(marked_sce){
 #' lineage trajectory.
 #' @param alpha type I error cutoff for the Wilcoxon signed rank test, the default is set to 0.1
 #' @return a list containing
-#' 1) p_value: the p-value of a Wilcoxon rank-sum test determining
+#' 1) p_value_case: the p-value of a Wilcoxon rank-sum test determining
 #' whether there is significant difference in developmental progression along the lineage trajectory
 #' between marked and unmarked cells of the case data set
 #' 2)  convidence_interval_overlapping_with_control: logical, if TRUE then the 95 percent confidence intervals for
@@ -131,9 +131,14 @@ Wilcoxon_test_marked_vs_unmarked <- function(marked_sce){
 COSICC_kinetics <- function(sce_case,sce_control,alpha=0.1){
     Wilcoxon_test_case <- Wilcoxon_test_marked_vs_unmarked(sce_case)
     Wilcoxon_test_control <- Wilcoxon_test_marked_vs_unmarked(sce_control)
-    overlapping_with_control <- !(Wilcoxon_test_case$lower_bound > Wilcoxon_test_control$upper_bound |
-                                      Wilcoxon_test_case$upper_bound < Wilcoxon_test_control$lower_bound)
-    out <- list(p_value=Wilcoxon_test_case$p_value,
+    overlapping_with_control <- !(Wilcoxon_test_case$lower_bound > 
+                                  Wilcoxon_test_control$upper_bound |
+            Wilcoxon_test_case$upper_bound < Wilcoxon_test_control$lower_bound)
+    out <- list(p_value_case=Wilcoxon_test_case$p_value,
+                lower_ci_bound_control = Wilcoxon_test_control$lower_bound,
+                upper_ci_bound_control = Wilcoxon_test_control$upper_bound,
+                lower_ci_bound_case = Wilcoxon_test_case$lower_bound,
+                upper_ci_bound_case = Wilcoxon_test_case$upper_bound,
                 convidence_interval_overlapping_with_control =
                     overlapping_with_control,
                 sig = Wilcoxon_test_case$p_value < alpha & !(overlapping_with_control))
