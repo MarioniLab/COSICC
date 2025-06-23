@@ -99,11 +99,11 @@ COSICC_DA_group <- function(sce_case,sce_control,alpha=0.1,thresh_marked_control
 #' @details Computes differential cell fate probability for perturbation experiments
 #' relative to control experiments.
 #' @param sce_case SingleCellExperiment for the case data set,
-#' colData needs to include the slots 'marked' (TRUE/FALSE) for the presence
+#' colData needs to include the slots 'cell', marked' (TRUE/FALSE) for the presence
 #' of a perturbation (CRISPR, drug, disease etc.) or fluorescent marking,
 #' and 'cell_type'
 #' @param sce_control SingleCellExperiment for the control data set,
-#' colData needs to include the slots 'marked' (TRUE/FALSE) for the presence
+#' colData needs to include the slots 'cell', marked' (TRUE/FALSE) for the presence
 #' of a perturbation (CRISPR, drug, disease etc.)
 #' @param lineage_scores data frame whose first column is the cell-id, and whose remaining columns
 #' are scores reflecting the probability that a cell forms part of the lineage, e.g.

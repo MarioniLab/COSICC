@@ -2,7 +2,6 @@
 title: "COSICC_DA_group and COSICC_DA_lineage"
 author: "Magdalena Strauss"
 date: "`r Sys.Date()`"
-bibliography: vignettes/references.bib
 output: pdf_document
 ---
 
@@ -135,6 +134,14 @@ This shows that the package contains the following example data sets:
 lineage_scores           
 sce_DA_lineage_case      
 sce_DA_lineage_control  
+
+Note that sce_DA_lineage_case and sce_DA_lineage_control have a slot cell in the 
+colData. This is the cell ID, or the ID of the mapped cell in a reference atlas. It
+needs to be identical to the id column of the lineage_scores data frame (see below).
+
+```{r}
+head(sce_DA_lineage_case)
+```
 
 The scores look as follows:
 
